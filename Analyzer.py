@@ -66,5 +66,37 @@ class ThermodynamicAnalyzer(BaseIoTAnalyzer):
 
 class EnergyEfficiencyAnalyzer(BaseIoTAnalyzer):
     """
-    Menganalisis seberapa sering lampu (sensor light) menyala ketika ruangan sebenarnya kosong (pemborosan energi).
+    Menganalisis seberapa sering lampu (sensor light) menyala ketika ruangan 
+    sebenarnya kosong (pemborosan energi).
     """
+    def analyze(self) -> Dict[str, Any]:
+        if not self._data:
+            return {}
+        
+        # Data ketika lampu menyala (light > 0)
+        light_on_data = [row for row in self._data if row.light > 0]
+        light_on_occupied = [row for row in light_on_data if row.is_occupied()]
+        light_on_vacant = [row for row in light_on_data if not row.is_occupied()]
+        
+        # Data ketika ruangan kosong
+        vacant_data = [row for row in self._data if not row.is_occupied()]
+        light_on_when_vacant = [row for row in vacant_data if row.light > 0]
+        
+        # Perhitungan metrik
+        total_light_on = len(light_on_data)
+        wasted_energy_count = len(light_on_when_vacant)
+        
+        # Estimasi pemborosan energi (asumsi setiap 100 lux setara 10 Watt)
+        avg_light_when_vacant = sum(row.light for row in light_on_when_vacant) / len(light_on_when_vacant) if light_on_when_vacant else 0
+        estimated_wattage_wasted = (avg_light_when_vacant / 100) * 10 if avg_light_when_vacant > 0 else 0
+        
+        return {
+            "total_light_on_events": total_light_on,
+            "light_on_when_occupied": len(light_on_occupied),
+            "light_on_when_vacant": wasted_energy_count,
+            "waste_percentage": (wasted_energy_count / total_light_on * 100) if total_light_on > 0 else 0,
+            "avg_light_intensity_when_vacant_lux": round(avg_light_when_vacant, 2),
+            "estimated_wattage_wasted_per_event": round(estimated_wattage_wasted, 2),
+            "recommendation": "PERINGATAN! Matikan lampu otomatis saat ruangan kosong." if wasted_energy_count > total_light_on * 0.3 else "Efisiensi energi cukup baik.",
+            "status": "BOROS" if wasted_energy_count > total_light_on * 0.3 else "EFISIEN"
+        }

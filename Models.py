@@ -20,4 +20,4 @@ class SensorReading:
         return self.occupancy == 1
     
     def is_abnormal_co2(self) -> bool:
-        return self.co2 > 1000 # indikasi ventilasi buruk
+        return self.co_2 > 1000 # indikasi ventilasi buruk
